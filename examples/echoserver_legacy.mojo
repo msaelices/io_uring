@@ -1,5 +1,4 @@
 import sys
-from buffer import Buffer
 from collections import InlineArray
 from memory import UnsafePointer
 
