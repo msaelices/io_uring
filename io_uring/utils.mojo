@@ -2,6 +2,24 @@ from sys.intrinsics import _RegisterPackType, llvm_intrinsic
 from sys.info import bitwidthof
 from memory import UnsafePointer
 
+
+@always_inline
+fn ensure(condition: Bool, message: String = "") raises:
+    """Ensure that a condition is true, otherwise raise an error.
+    
+    Args:
+        condition: The condition to check.
+        message: Optional error message.
+        
+    Raises:
+        If the condition is false.
+    """
+    if not condition:
+        if message:
+            raise message
+        else:
+            raise "Assertion failed"
+
 @value
 @nonmaterializable(NoneType)
 @register_passable("trivial")
