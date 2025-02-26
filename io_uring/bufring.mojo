@@ -19,29 +19,29 @@ alias PBUF_OFF_BITS = 16
 struct IoUringBufferRingEntry:
     var addr: UInt64
     var len: UInt32
-    var flags: UInt32
-    var resv: UInt64
+    var bid: UInt16
+    var resv: UInt16
     
     @always_inline
     fn __init__(out self):
         """Initialize an empty buffer ring entry."""
         self.addr = 0
         self.len = 0
-        self.flags = 0
+        self.bid = 0
         self.resv = 0
 
     @always_inline
-    fn __init__(out self, addr: UInt64, len: UInt32, flags: UInt32 = 0):
+    fn __init__(out self, addr: UInt64, len: UInt32, bid: UInt16 = 0):
         """Initialize a buffer ring entry with given parameters.
         
         Args:
             addr: Memory address for the buffer.
             len: Length of the buffer.
-            flags: Flags for the buffer.
+            bid: Buffer ID.
         """
         self.addr = addr
         self.len = len
-        self.flags = flags
+        self.bid = bid
         self.resv = 0
 
 
@@ -75,7 +75,8 @@ struct BufferRing:
         
         # Calculate mmap size including header
         entry_size = sizeof[IoUringBufferRingEntry]()
-        self.mmap_size = UInt(ring_size * entry_size)
+        # Include space for header (tail as a UInt16 at offset 16 bytes in first 8*3 bytes)
+        self.mmap_size = UInt(8 * 3 + ring_size * entry_size)
         
         # Create memory mapping
         ptr = mmap_anonymous(
@@ -85,8 +86,13 @@ struct BufferRing:
             flags=MapFlags.SHARED | MapFlags.POPULATE
         )
         
-        self.rings = ptr.bitcast[IoUringBufferRingEntry]()
+        # The rings pointer should skip the header (8*3 bytes)
+        self.rings = ptr.offset(8 * 3).bitcast[IoUringBufferRingEntry]()
         self.ring_addr = Int(ptr)
+
+        # Initialize the tail to 0 (at offset 16 bytes in the header)
+        var tail_ptr = ptr.offset(16).bitcast[UInt16]()
+        tail_ptr[] = 0
         
         # Initialize ring entries
         for i in range(ring_size):
@@ -111,12 +117,12 @@ struct BufferRing:
             Number of registered rings.
         """
         # Create pbuf ring descriptor
-        var pbuf_ring = IoUringPbufRing(
-            addr=self.ring_addr,
-            len=UInt32(self.mmap_size),
-            buf_ring=0, # Ring index, usually 0 for first ring
-            buf_grp=self.buf_grp
-        )
+        var pbuf_ring = IoUringPbufRing()
+        pbuf_ring.ring_addr = self.ring_addr
+        pbuf_ring.ring_entries = UInt32(self.ring_size)
+        pbuf_ring.bgid = self.buf_grp
+        print("BufferRing.register: Using group ID:", self.buf_grp)
+        pbuf_ring.flags = 0
         
         # Create a SafeSlice to register it
         var pbuf_slice = SafeSlice[IoUringPbufRing](
@@ -138,19 +144,19 @@ struct BufferRing:
         """
         IoUringPbufRing.unregister_pbuf_ring(fd)
     
-    fn add_buffer(self, idx: Int, addr: UInt64, len: UInt32, flags: UInt32 = 0):
+    fn add_buffer(self, idx: Int, addr: UInt64, len: UInt32, bid: UInt16 = 0):
         """Add a buffer to the ring at the specified index.
         
         Args:
             idx: Ring index to add the buffer to.
             addr: Memory address of the buffer.
             len: Length of the buffer.
-            flags: Buffer flags.
+            bid: Buffer ID.
         """
         # Ensure idx is within the ring
         ring_idx = idx & Int(self.mask)
         # Create entry
-        var entry = IoUringBufferRingEntry(addr, len, flags)
+        var entry = IoUringBufferRingEntry(addr, len, bid)
         # Store in ring
         self.rings.offset(ring_idx)[] = entry
     

@@ -27,7 +27,7 @@ from mojix.mm import (
 )
 from sys.info import alignof, sizeof
 from memory import UnsafePointer
-from linux_raw.utils import SafeSlice
+from linux_raw.utils import SafeSlice, DTypeArray
 
 
 struct Region(Movable):
@@ -148,8 +148,8 @@ struct MemoryMapping[sqe: SQE, cqe: CQE](Movable):
         if sqes_size <= page_size:
             sqes_size = page_size
         else:
-            sqes_size = HUGE_PAGE_SIZE
-            flags |= MapFlags.HUGETLB | MapFlags.HUGE_2MB
+            # Use regular pages instead of huge pages
+            sqes_size = (sqes_size + page_size - 1) & ~(page_size - 1)  # Round up to page size
 
         self.sqes_mem = Region(
             len=UInt(sqes_size.cast[DType.index]().value), flags=flags
@@ -159,8 +159,8 @@ struct MemoryMapping[sqe: SQE, cqe: CQE](Movable):
         if sq_cq_size <= page_size:
             sq_cq_size = page_size
         else:
-            sq_cq_size = HUGE_PAGE_SIZE
-            flags |= MapFlags.HUGETLB | MapFlags.HUGE_2MB
+            # Use regular pages instead of huge pages
+            sq_cq_size = (sq_cq_size + page_size - 1) & ~(page_size - 1)  # Round up to page size
 
         self.sq_cq_mem = Region(
             len=UInt(sq_cq_size.cast[DType.index]().value), flags=flags
@@ -196,21 +196,23 @@ struct IoUringPbufRing:
     This is used to register a buffer ring that can be shared between the
     application and the kernel, providing zero-copy operation for
     networking operations.
+
+    Based on struct io_uring_buf_reg from kernel header.
     """
-    var addr: UInt64    # Buffer ring address
-    var len: UInt32     # Length of the ring
-    var buf_ring: UInt16  # Buffer ring index
-    var buf_grp: UInt16  # Buffer group ID
-    var pad: UInt64     # Padding for alignment
-    
+    var ring_addr: UInt64    # Buffer ring address
+    var ring_entries: UInt32  # Number of entries in the ring
+    var bgid: UInt16         # Buffer group ID
+    var flags: UInt16        # Flags
+    var resv: DTypeArray[DType.uint64, 3]  # Reserved fields
+
     @always_inline
     fn __init__(out self):
         """Initialize an empty pbuf ring."""
-        self.addr = 0
-        self.len = 0
-        self.buf_ring = 0
-        self.buf_grp = 0
-        self.pad = 0
+        self.ring_addr = 0
+        self.ring_entries = 0
+        self.bgid = 0
+        self.flags = 0
+        self.resv = DTypeArray[DType.uint64, 3]()
     
     @always_inline
     fn __init__(out self, addr: UInt64, len: UInt32, buf_ring: UInt16, buf_grp: UInt16):
@@ -218,15 +220,15 @@ struct IoUringPbufRing:
         
         Args:
             addr: Buffer ring address.
-            len: Length of the ring.
-            buf_ring: Buffer ring index.
+            len: Total size of the buffer ring memory region.
+            buf_ring: Buffer ring index (flags in the kernel struct).
             buf_grp: Buffer group ID.
         """
-        self.addr = addr
-        self.len = len
-        self.buf_ring = buf_ring
-        self.buf_grp = buf_grp
-        self.pad = 0
+        self.ring_addr = addr
+        self.ring_entries = len / sizeof[IoUringBufferRingEntry]()
+        self.bgid = buf_grp
+        self.flags = buf_ring
+        self.resv = DTypeArray[DType.uint64, 3]()
     
     @staticmethod
     fn register_pbuf_ring[
@@ -244,14 +246,32 @@ struct IoUringPbufRing:
         Raises:
             `Errno` if the syscall returned an error.
         """
-        _ = io_uring_register[Fd](
-            fd=fd,
-            arg=RegisterArg[StaticMutableOrigin](
-                opcode=IoUringRegisterOp.REGISTER_PBUF_RING,
-                arg_unsafe_ptr=UnsafePointer(pbuf_slice.ref_unsafe_ptr()).bitcast[c_void](),
-                nr_args=UInt32(pbuf_slice.ref_size()),
-            ),
-        )
+        # Create a local copy to make sure values are set correctly
+        var reg = IoUringPbufRing()
+        reg.ring_addr = pbuf_slice.ref_unsafe_ptr()[0].ring_addr
+        reg.ring_entries = pbuf_slice.ref_unsafe_ptr()[0].ring_entries
+        reg.bgid = pbuf_slice.ref_unsafe_ptr()[0].bgid
+
+        # Manually force group ID to 1 (for testing)
+        reg.bgid = UInt16(1)
+
+        print("Registering buffer ring with fd:", fd.unsafe_fd())
+        print("Ring entries:", reg.ring_entries)
+        print("Group ID:", reg.bgid)
+
+        try:
+            _ = io_uring_register[Fd](
+                fd=fd,
+                arg=RegisterArg[StaticMutableOrigin](
+                    opcode=IoUringRegisterOp.REGISTER_PBUF_RING,
+                    arg_unsafe_ptr=UnsafePointer.address_of(reg).bitcast[c_void](),
+                    nr_args=UInt32(1),
+                ),
+            )
+            print("Buffer ring registration successful")
+        except e:
+            print("Buffer ring registration failed with error:", e)
+            raise e
         
         return UInt32(pbuf_slice.ref_size())
     

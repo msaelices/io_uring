@@ -59,13 +59,15 @@ struct BufferMemory:
         Args:
             buf_grp: Buffer group ID to use.
         """
+        print("Initializing BufferMemory with group ID:", buf_grp)
         self._data = InlineArray[Int8, MAX_MESSAGE_LEN * BUFFERS_COUNT](fill=0)
         self.buffer_ring = BufferRing(BUFFERS_COUNT, buf_grp)
         
         # Add all buffers to the ring
         for i in range(BUFFERS_COUNT):
             buffer_addr = UInt64(Int(self._data.unsafe_ptr()) + i * MAX_MESSAGE_LEN)
-            self.buffer_ring.add_buffer(i, buffer_addr, UInt32(MAX_MESSAGE_LEN))
+            bid = UInt16(i)  # Make sure buffer IDs match indexes
+            self.buffer_ring.add_buffer(i, buffer_addr, UInt32(MAX_MESSAGE_LEN), bid)
     
     fn get_buffer_pointer(self, idx: UInt16) -> UnsafePointer[BYTE]:
         """Get a pointer to a specific buffer.
@@ -86,12 +88,13 @@ fn main() raises:
     
     # Initialize io_uring instance with 128 entries
     ring = IoUring[](sq_entries=128)
-    
-    # Buffer group ID
+
+    # Buffer group ID - must not be 0
     buf_grp_id = UInt16(1)
     
     # Create buffer memory and register the buffer ring
     var buffer_memory = BufferMemory(buf_grp_id)
+    print("About to register buffer ring with group ID:", buf_grp_id)
     _ = buffer_memory.buffer_ring.register(ring.fd)
     
     # Setup listener socket
@@ -193,7 +196,7 @@ fn main() raises:
                 buffer_addr = UInt64(Int(buffer_memory.get_buffer_pointer(idx)))
                 buffer_memory.buffer_ring.update_entry(
                     Int(idx), 
-                    IoUringBufferRingEntry(buffer_addr, UInt32(MAX_MESSAGE_LEN))
+                    IoUringBufferRingEntry(buffer_addr, UInt32(MAX_MESSAGE_LEN), idx)
                 )
                 
                 # Post a new read for the connection
