@@ -3,6 +3,73 @@ from sys.info import is_x86, is_64bit
 from memory import UnsafePointer
 
 
+struct SafeSlice[T: AnyType](CollectionElement):
+    """A pointer to a slice of memory with a known size."""
+    var _ptr: UnsafePointer[T]
+    var _count: Int
+
+    @always_inline
+    fn __init__(out self, unsafe_ptr: UnsafePointer[T], count: Int):
+        """Create a new SafeSlice.
+        
+        Args:
+            unsafe_ptr: The pointer to the memory.
+            count: The number of elements in the slice.
+        """
+        self._ptr = unsafe_ptr
+        self._count = count
+    
+    @always_inline
+    fn __copyinit__(out self, existing: Self):
+        """Copy constructor for SafeSlice.
+        
+        Args:
+            existing: The existing SafeSlice to copy.
+        """
+        self._ptr = existing._ptr
+        self._count = existing._count
+    
+    @always_inline
+    fn __moveinit__(out self, owned existing: Self):
+        """Move constructor for SafeSlice.
+        
+        Args:
+            existing: The existing SafeSlice to move.
+        """
+        self._ptr = existing._ptr
+        self._count = existing._count
+
+    @always_inline
+    fn ref_unsafe_ptr(self) -> UnsafePointer[T]:
+        """Get the underlying pointer.
+        
+        Returns:
+            The unsafe pointer to the memory.
+        """
+        return self._ptr
+
+    @always_inline
+    fn ref_size(self) -> Int:
+        """Get the size of the slice.
+        
+        Returns:
+            The number of elements in the slice.
+        """
+        return self._count
+        
+    @always_inline
+    fn __getitem__(self, idx: Int) -> T:
+        """Get the element at the given index.
+        
+        Args:
+            idx: The index of the element.
+            
+        Returns:
+            The element at the given index.
+        """
+        return self._ptr.offset(idx)[]
+
+
 @always_inline("nodebug")
 fn is_x86_64() -> Bool:
     return is_x86() and is_64bit()

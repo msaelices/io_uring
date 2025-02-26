@@ -2,6 +2,7 @@ from sys.intrinsics import _RegisterPackType, llvm_intrinsic
 from sys.info import bitwidthof
 from memory import UnsafePointer
 
+
 @value
 @nonmaterializable(NoneType)
 @register_passable("trivial")
