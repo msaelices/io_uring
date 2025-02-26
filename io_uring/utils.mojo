@@ -10,7 +10,7 @@ fn ensure(condition: Bool, message: String = "") raises:
     Args:
         condition: The condition to check.
         message: Optional error message.
-        
+
     Raises:
         If the condition is false.
     """

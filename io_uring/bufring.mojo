@@ -101,10 +101,13 @@ struct BufferRing:
     
     fn register[Fd: IoUringFileDescriptor](self, fd: Fd) raises -> UInt32:
         """Register this buffer ring with the io_uring instance.
+
+        Parameters:
+            Fd: Io_uring file descriptor type.
         
         Args:
-            fd: io_uring file descriptor.
-            
+            fd: Io_uring file descriptor.
+
         Returns:
             Number of registered rings.
         """
@@ -128,8 +131,11 @@ struct BufferRing:
     fn unregister[Fd: IoUringFileDescriptor](fd: Fd) raises:
         """Unregister all buffer rings from the io_uring instance.
         
+        Parameters:
+            Fd: Io_uring file descriptor type.
+
         Args:
-            fd: io_uring file descriptor.
+            fd: Io_uring file descriptor.
         """
         IoUringPbufRing.unregister_pbuf_ring(fd)
     
@@ -154,7 +160,7 @@ struct BufferRing:
         
         Args:
             idx: Ring index to retrieve.
-            
+
         Returns:
             The buffer ring entry at the specified index.
         """
@@ -178,7 +184,7 @@ struct BufferRing:
         Args:
             grp: Buffer group ID.
             idx: Buffer index within the group.
-            
+
         Returns:
             Combined buffer ID for use with io_uring.
         """
@@ -190,7 +196,7 @@ struct BufferRing:
         
         Args:
             bid: Combined buffer ID from io_uring.
-            
+
         Returns:
             Tuple of (group_id, buffer_index).
         """
