@@ -1,6 +1,6 @@
 from .cq import Cq
 from .params import Entries
-from .utils import _add_with_overflow, ensure
+from .utils import _add_with_overflow
 from mojix.ctypes import c_void
 from mojix.utils import StaticMutableOrigin
 from mojix.io_uring import (
