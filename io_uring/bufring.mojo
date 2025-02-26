@@ -1,11 +1,12 @@
 from memory import UnsafePointer
 from sys.info import sizeof
+
+from io_uring.mm import IoUringPbufRing
+from io_uring.utils import ensure
+from linux_raw.utils import SafeSlice
 from mojix.ctypes import c_void
 from mojix.fd import IoUringFileDescriptor
-from .mm import IoUringPbufRing
-from linux_raw.utils import SafeSlice
 from mojix.mm import mmap_anonymous, munmap, ProtFlags, MapFlags
-from .utils import ensure
 
 
 # Constants for buffer ring
