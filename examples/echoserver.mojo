@@ -7,8 +7,6 @@ from mojix.errno import Errno
 from mojix.fd import Fd, OwnedFd, UnsafeFd
 from mojix.io_uring import SQE64, IoUringSqeFlags
 from mojix.net.socket import socket, bind, listen
-# from mojix.net.socket import socket, bind, listen, setsockopt
-#from mojix.net.types import AddrFamily, SocketType, SocketAddrV4, SocketFlags, SocketOptLevel, SocketOption
 from mojix.net.types import AddrFamily, SocketType, SocketAddrV4
 from mojix.timespec import Timespec
 from io_uring import IoUring, BufferRing, IoUringBufferRingEntry, WaitArg
@@ -98,10 +96,6 @@ fn main() raises:
     
     # Setup listener socket
     listener_fd = socket(AddrFamily.INET, SocketType.STREAM)
-    
-    # Set socket options
-    # setsockopt(listener_fd, SocketOptLevel.SOCKET, SocketOption.REUSEADDR, 1)
-    # setsockopt(listener_fd, SocketOptLevel.SOCKET, SocketOption.REUSEPORT, 1)
     
     bind(listener_fd, SocketAddrV4(0, 0, 0, 0, port=port))
     listen(listener_fd, backlog=BACKLOG)
