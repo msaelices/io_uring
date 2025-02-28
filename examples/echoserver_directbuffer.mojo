@@ -1,17 +1,13 @@
 import sys
-from buffer import Buffer
 from collections import InlineArray
 from memory import UnsafePointer
 
-from mojix.errno import Errno
-from mojix.fd import Fd, OwnedFd, UnsafeFd
-from mojix.io_uring import SQE64, IoUringSqeFlags
+from mojix.fd import Fd
+from mojix.io_uring import SQE64
 from mojix.net.socket import socket, bind, listen
 from mojix.net.types import AddrFamily, SocketType, SocketAddrV4
-from mojix.timespec import Timespec
-from mojix.ctypes import c_void
-from io_uring import IoUring, BufferRing, IoUringBufferRingEntry, WaitArg
-from io_uring.op import Accept, Read, Write, Nop
+from io_uring import IoUring
+from io_uring.op import Accept, Read, Write
 
 alias BYTE = Int8
 alias MAX_CONNECTIONS = 16
