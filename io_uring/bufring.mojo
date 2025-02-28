@@ -98,6 +98,9 @@ struct BufferRing:
         for i in range(ring_size):
             var entry = IoUringBufferRingEntry()
             self.rings.offset(i)[] = entry
+            
+        # Update the tail pointer to make all entries available initially
+        tail_ptr[] = UInt16(ring_size)
     
     fn __del__(owned self):
         """Clean up the buffer ring mmap."""
@@ -181,7 +184,7 @@ struct BufferRing:
         """
         ring_idx = idx & Int(self.mask)
         self.rings.offset(ring_idx)[] = entry
-    
+
     @staticmethod
     fn make_buffer_id(grp: UInt16, idx: UInt16) -> UInt32:
         """Create a buffer ID from a group ID and index.
