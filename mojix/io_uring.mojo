@@ -170,9 +170,9 @@ alias SQE128 = SQE(
 @register_passable("trivial")
 struct SQE:
     var id: UInt8
-    var size: IntLiteral
-    var align: IntLiteral
-    var array_size: IntLiteral
+    var size: Int
+    var align: Int
+    var array_size: Int
     var setup_flags: IoUringSetupFlags
 
     @always_inline
@@ -223,10 +223,10 @@ alias CQE_SIZE_MAX = CQE32.size
 @register_passable("trivial")
 struct CQE:
     var id: UInt8
-    var size: IntLiteral
-    var align: IntLiteral
-    var array_size: IntLiteral
-    var rings_size: IntLiteral
+    var size: Int
+    var align: Int
+    var array_size: Int
+    var rings_size: Int
     """For the size of the rings, we perform calculations in the same way as the kernel.
     [Linux]: https://github.com/torvalds/linux/blob/v6.7/io_uring/io_uring.c#L2804.
     [Linux]: https://github.com/torvalds/linux/blob/v6.7/include/linux/io_uring_types.h#L83.
@@ -660,7 +660,7 @@ struct IoUringCqeFlags(Defaultable, Boolable):
         return self.value != 0
 
     @always_inline("nodebug")
-    fn __rshift__(self, rhs: IntLiteral) -> Self:
+    fn __rshift__(self, rhs: Int) -> Self:
         """Returns `self >> rhs`.
 
         Args:

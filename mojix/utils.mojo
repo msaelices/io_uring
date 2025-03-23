@@ -22,7 +22,7 @@ fn _size_eq[T: AnyType, I: AnyType]():
 
 
 @always_inline("nodebug")
-fn _size_eq[T: AnyType, size: IntLiteral]():
+fn _size_eq[T: AnyType, size: Int]():
     constrained[sizeof[T]() == size]()
 
 
@@ -32,7 +32,7 @@ fn _align_eq[T: AnyType, I: AnyType]():
 
 
 @always_inline("nodebug")
-fn _align_eq[T: AnyType, align: IntLiteral]():
+fn _align_eq[T: AnyType, align: Int]():
     constrained[alignof[T]() == align]()
 
 
